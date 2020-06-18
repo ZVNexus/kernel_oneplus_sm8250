@@ -1,3 +1,11 @@
+#include "../display/dsi-panel-samsung_oneplus_dsc.dtsi"
+#include "../display/dsi-panel-nt37800-amoled-dsc-fhd-plus-cmd.dtsi"
+#include "../display/pxlw-iris5-cfg-samsung-wqhd-dsc8-90fps-cmd.dtsi"
+#include "../display/dsi-panel-samsung_oneplus_dsc_2nd.dtsi"
+#include "../display/dsi-panel-samsung_ana6706_dsc.dtsi"
+#include "../display/dsi-panel-samsung_ana6705_fhd_dsc.dtsi"
+#include "../display/dsi-panel-samsung_sofef00_m_video.dtsi"
+#include "../display/dsi-panel-samsung_ana6706_dsc_2nd.dtsi"
 #include "dsi-panel-sw43404-amoled-dsc-wqhd-cmd.dtsi"
 #include "dsi-panel-sw43404-amoled-dsc-wqhd-video.dtsi"
 #include "dsi-panel-sw43404-amoled-dsc-fhd-plus-cmd.dtsi"
@@ -215,7 +223,8 @@
 		ibb-supply = <&ibb_vreg>;
 
 		qcom,mdp = <&mdss_mdp>;
-		qcom,dsi-default-panel = <&dsi_sw43404_amoled_cmd>;
+		qcom,dsi-default-panel = <&dsi_samsung_ana6706_dsc_cmd>;
+		pxlw,iris-lightup-config = <&mdss_iris_cfg_samsung_oneplus_dsc8_90fps_cmd>;
 	};
 
 	sde_dsi1: qcom,dsi-display-secondary {
@@ -248,6 +257,7 @@
 		vddio-supply = <&pm8150_l14>;
 		vdd-supply = <&pm8150a_l11>;
 		avdd-supply = <&display_panel_avdd>;
+		qcom,dsi-default-panel = <&dsi_samsung_ana6706_dsc_cmd_2nd>;
 
 		qcom,mdp = <&mdss_mdp>;
 	};
