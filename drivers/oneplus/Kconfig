@@ -1,1 +1,3 @@
+source "drivers/oneplus/boot_mode/Kconfig"
+source "drivers/oneplus/input/Kconfig"
 source "drivers/oneplus/project_info/Kconfig"
