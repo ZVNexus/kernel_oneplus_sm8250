@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -77,7 +77,6 @@ enum sde_plane_sclcheck_state {
  * @defer_prepare_fb:	indicate if prepare_fb call was deferred
  * @pipe_order_flags: contains pipe order flags:
  *			SDE_SSPP_RIGHT - right pipe in source split pair
- * @layout_offset:	horizontal layout offset for global coordinate
  * @scaler3_cfg: configuration data for scaler3
  * @pixel_ext: configuration data for pixel extensions
  * @scaler_check_state: indicates status of user provided pixel extension data
@@ -98,13 +97,11 @@ struct sde_plane_state {
 	bool pending;
 	bool defer_prepare_fb;
 	uint32_t pipe_order_flags;
-	int layout_offset;
 
 	/* scaler configuration */
 	struct sde_hw_scaler3_cfg scaler3_cfg;
 	struct sde_hw_pixel_ext pixel_ext;
 	enum sde_plane_sclcheck_state scaler_check_state;
-	struct sde_hw_inline_pre_downscale_cfg pre_down;
 
 	/* @sc_cfg: system_cache configuration */
 	struct sde_hw_pipe_sc_cfg sc_cfg;

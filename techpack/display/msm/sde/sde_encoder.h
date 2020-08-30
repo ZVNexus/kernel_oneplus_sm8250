@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -26,7 +26,7 @@
 #include "sde_kms.h"
 #include "sde_connector.h"
 
-#define MAX_CHANNELS_PER_ENC 4
+#define MAX_CHANNELS_PER_ENC 2
 
 #define SDE_ENCODER_FRAME_EVENT_DONE			BIT(0)
 #define SDE_ENCODER_FRAME_EVENT_ERROR			BIT(1)
@@ -63,13 +63,11 @@ struct sde_encoder_hw_resources {
  *                      the bounds of the physical display at the bit index
  * @recovery_events_enabled: indicates status of client for recoovery events
  * @frame_trigger_mode: indicates frame trigger mode
- * @num_channels: number of compression encoders
  */
 struct sde_encoder_kickoff_params {
 	unsigned long affected_displays;
 	bool recovery_events_enabled;
 	enum frame_trigger_mode_type frame_trigger_mode;
-	u32 num_channels;
 };
 
 /**
@@ -357,5 +355,14 @@ void sde_encoder_needs_hw_reset(struct drm_encoder *enc);
  * @enable:	enable/disable flag
  */
 void sde_encoder_uidle_enable(struct drm_encoder *drm_enc, bool enable);
+
+#if defined(CONFIG_PXLW_IRIS5)
+void sde_encoder_rc_lock(struct drm_encoder *drm_enc);
+void sde_encoder_rc_unlock(struct drm_encoder *drm_enc);
+void sde_encoder_disable_autorefresh_handler(struct drm_encoder *drm_enc);
+#endif
+#if defined(CONFIG_PXLW_IRIS5) || defined(CONFIG_PXLW_SOFT_IRIS)
+bool sde_encoder_is_disabled(struct drm_encoder *drm_enc);
+#endif
 
 #endif /* __SDE_ENCODER_H__ */

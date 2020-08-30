@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2019 The Linux Foundation. All rights reserved.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -29,10 +29,19 @@
 #include "sde_hw_ds.h"
 
 #define SDE_CRTC_NAME_SIZE	12
+#define RGB_NUM_COMPONENTS	3
 
 /* define the maximum number of in-flight frame events */
 /* Expand it to 2x for handling atleast 2 connectors safely */
 #define SDE_CRTC_FRAME_EVENT_SIZE	(4 * 2)
+
+#define DSI_PANEL_SAMSUNG_S6E3HC2 0
+#define DSI_PANEL_SAMSUNG_S6E3FC2X01 1
+#define DSI_PANEL_SAMSUNG_SOFEF03F_M 2
+#define DSI_PANEL_SAMSUNG_ANA6705 3
+#define DSI_PANEL_SAMSUNG_ANA6706 4
+
+extern char dsi_panel_name;
 
 /**
  * enum sde_crtc_client_type: crtc client type
@@ -263,6 +272,7 @@ struct sde_crtc_misr_info {
  * @ltm_buffer_lock : muttx to protect ltm_buffers allcation and free
  * @ltm_lock        : Spinlock to protect ltm buffer_cnt, hist_en and ltm lists
  * @needs_hw_reset  : Initiate a hw ctl reset
+ * @comp_ratio      : Compression ratio
  */
 struct sde_crtc {
 	struct drm_crtc base;
@@ -272,7 +282,7 @@ struct sde_crtc {
 	u32 num_ctls;
 	u32 num_mixers;
 	bool mixers_swapped;
-	struct sde_crtc_mixer mixers[MAX_MIXERS_PER_CRTC];
+	struct sde_crtc_mixer mixers[CRTC_DUAL_MIXERS];
 
 	struct drm_pending_vblank_event *event;
 	u32 vsync_count;
@@ -342,6 +352,8 @@ struct sde_crtc {
 	struct mutex ltm_buffer_lock;
 	spinlock_t ltm_lock;
 	bool needs_hw_reset;
+
+	int comp_ratio;
 };
 
 #define to_sde_crtc(x) container_of(x, struct sde_crtc, base)
@@ -386,8 +398,8 @@ struct sde_crtc_state {
 
 	bool is_ppsplit;
 	struct sde_rect crtc_roi;
-	struct sde_rect lm_bounds[MAX_MIXERS_PER_CRTC];
-	struct sde_rect lm_roi[MAX_MIXERS_PER_CRTC];
+	struct sde_rect lm_bounds[CRTC_DUAL_MIXERS];
+	struct sde_rect lm_roi[CRTC_DUAL_MIXERS];
 	struct msm_roi_list user_roi_list;
 
 	struct msm_property_state property_state;
@@ -402,6 +414,9 @@ struct sde_crtc_state {
 	struct sde_hw_scaler3_lut_cfg scl3_lut_cfg;
 
 	struct sde_core_perf_params new_perf;
+	bool fingerprint_mode;
+	bool fingerprint_pressed;
+	struct sde_hw_dim_layer *fingerprint_dim_layer;
 };
 
 enum sde_crtc_irq_state {
@@ -458,7 +473,8 @@ static inline int sde_crtc_get_mixer_width(struct sde_crtc *sde_crtc,
 	if (cstate->num_ds_enabled)
 		mixer_width = cstate->ds_cfg[0].lm_width;
 	else
-		mixer_width = mode->hdisplay / sde_crtc->num_mixers;
+		mixer_width = (sde_crtc->num_mixers == CRTC_DUAL_MIXERS ?
+			mode->hdisplay / CRTC_DUAL_MIXERS : mode->hdisplay);
 
 	return mixer_width;
 }
@@ -832,5 +848,32 @@ void sde_crtc_misr_setup(struct drm_crtc *crtc, bool enable, u32 frame_count);
  */
 void sde_crtc_get_misr_info(struct drm_crtc *crtc,
 		struct sde_crtc_misr_info *crtc_misr_info);
+
+/*
+ * sde_crtc_set_compression_ratio - set compression ratio src_bpp/target_bpp
+ * @msm_mode_info: Mode info
+ * @crtc: Pointer to drm crtc structure
+ */
+static inline void sde_crtc_set_compression_ratio(
+		struct msm_mode_info mode_info, struct drm_crtc *crtc)
+{
+	int target_bpp, src_bpp;
+	struct sde_crtc *sde_crtc = to_sde_crtc(crtc);
+
+	/**
+	 * In cases where DSC compression type is not found, set
+	 * compression value to default value of 1.
+	 */
+	if (mode_info.comp_info.comp_type != MSM_DISPLAY_COMPRESSION_DSC) {
+		sde_crtc->comp_ratio = 1;
+		goto end;
+	}
+
+	target_bpp = mode_info.comp_info.dsc_info.bpp;
+	src_bpp = mode_info.comp_info.dsc_info.bpc * RGB_NUM_COMPONENTS;
+	sde_crtc->comp_ratio = mult_frac(1, src_bpp, target_bpp);
+end:
+	SDE_DEBUG("sde_crtc comp ratio: %d\n", sde_crtc->comp_ratio);
+}
 
 #endif /* _SDE_CRTC_H_ */

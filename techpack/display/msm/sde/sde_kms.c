@@ -50,6 +50,9 @@
 #include "sde_reg_dma.h"
 #include "sde_connector.h"
 
+#if defined(CONFIG_PXLW_IRIS5) || defined(CONFIG_PXLW_SOFT_IRIS)
+#include "dsi_iris5_api.h"
+#endif
 #include <soc/qcom/scm.h>
 #include "soc/qcom/secure_buffer.h"
 #include "soc/qcom/qtee_shmbridge.h"
@@ -1405,7 +1408,6 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 		.get_panel_vfp = NULL,
 	};
 	static const struct sde_connector_ops dp_ops = {
-		.set_info_blob = dp_connnector_set_info_blob,
 		.post_init  = dp_connector_post_init,
 		.detect     = dp_connector_detect,
 		.get_modes  = dp_connector_get_modes,
@@ -1435,8 +1437,7 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 
 	max_encoders = sde_kms->dsi_display_count + sde_kms->wb_display_count +
 				sde_kms->dp_display_count +
-				sde_kms->dp_stream_count +
-				(sde_kms->dp_stream_count >> 1);
+				sde_kms->dp_stream_count;
 	if (max_encoders > ARRAY_SIZE(priv->encoders)) {
 		max_encoders = ARRAY_SIZE(priv->encoders);
 		SDE_ERROR("capping number of displays to %d", max_encoders);
@@ -1584,9 +1585,7 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 
 		/* update display cap to MST_MODE for DP MST encoders */
 		info.capabilities |= MSM_DISPLAY_CAP_MST_MODE;
-		sde_kms->dp_stream_count = dp_display_get_num_of_streams();
-		for (idx = 0; idx < sde_kms->dp_stream_count &&
-				priv->num_encoders < max_encoders; idx++) {
+		for (idx = 0; idx < sde_kms->dp_stream_count; idx++) {
 			info.h_tile_instance[0] = idx;
 			encoder = sde_encoder_init(dev, &info);
 			if (IS_ERR_OR_NULL(encoder)) {
@@ -1595,29 +1594,6 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 			}
 
 			rc = dp_mst_drm_bridge_init(display, encoder);
-			if (rc) {
-				SDE_ERROR("dp mst bridge %d init failed, %d\n",
-						i, rc);
-				sde_encoder_destroy(encoder);
-				continue;
-			}
-			priv->encoders[priv->num_encoders++] = encoder;
-		}
-
-		/* create super encoder and bridge */
-		if (sde_kms->dp_stream_count > 1 &&
-				priv->num_encoders < max_encoders) {
-			info.num_of_h_tiles = sde_kms->dp_stream_count;
-			for (idx = 0; idx < sde_kms->dp_stream_count; idx++)
-				info.h_tile_instance[idx] = idx;
-
-			encoder = sde_encoder_init(dev, &info);
-			if (IS_ERR_OR_NULL(encoder)) {
-				SDE_ERROR("dp mst super enc init failed\n");
-				continue;
-			}
-
-			rc = dp_mst_drm_super_bridge_init(display, encoder);
 			if (rc) {
 				SDE_ERROR("dp mst bridge %d init failed, %d\n",
 						i, rc);
@@ -2651,9 +2627,10 @@ static int sde_kms_cont_splash_config(struct msm_kms *kms)
 	return rc;
 }
 
-static bool sde_kms_check_for_splash(struct msm_kms *kms)
+static bool sde_kms_check_for_splash(struct msm_kms *kms, struct drm_crtc *crtc)
 {
 	struct sde_kms *sde_kms;
+	struct drm_encoder *encoder;
 
 	if (!kms) {
 		SDE_ERROR("invalid kms\n");
@@ -2661,7 +2638,18 @@ static bool sde_kms_check_for_splash(struct msm_kms *kms)
 	}
 
 	sde_kms = to_sde_kms(kms);
-	return sde_kms->splash_data.num_splash_displays;
+
+	if (!crtc || !sde_kms->splash_data.num_splash_displays)
+		return !!sde_kms->splash_data.num_splash_displays;
+
+	drm_for_each_encoder_mask(encoder, crtc->dev,
+			crtc->state->encoder_mask) {
+		if (sde_encoder_in_cont_splash(encoder))
+			return true;
+	}
+
+	return false;
+
 }
 
 static int sde_kms_get_mixer_count(const struct msm_kms *kms,
@@ -3032,6 +3020,22 @@ end:
 	return 0;
 }
 
+#if defined(CONFIG_PXLW_IRIS5) || defined(CONFIG_PXLW_SOFT_IRIS)
+static int sde_kms_iris5_operate(struct msm_kms *kms,
+		u32 operate_type, struct msm_iris_operate_value *operate_value)
+{
+	int ret = -EINVAL;
+
+	if (operate_type == DRM_MSM_IRIS_OPERATE_CONF) {
+		ret = iris5_operate_conf(operate_value);
+	} else if (operate_type == DRM_MSM_IRIS_OPERATE_TOOL) {
+		ret = iris5_operate_tool(operate_value);
+	}
+
+	return ret;
+}
+#endif // CONFIG_PXLW_IRIS5
+
 static const struct msm_kms_funcs kms_funcs = {
 	.hw_init         = sde_kms_hw_init,
 	.postinit        = sde_kms_postinit,
@@ -3062,6 +3066,9 @@ static const struct msm_kms_funcs kms_funcs = {
 	.get_address_space_device = _sde_kms_get_address_space_device,
 	.postopen = _sde_kms_post_open,
 	.check_for_splash = sde_kms_check_for_splash,
+#if defined(CONFIG_PXLW_IRIS5) || defined(CONFIG_PXLW_SOFT_IRIS)
+	.iris5_operate = sde_kms_iris5_operate,
+#endif
 	.get_mixer_count = sde_kms_get_mixer_count,
 };
 
@@ -3181,30 +3188,43 @@ static void _sde_kms_set_lutdma_vbif_remap(struct sde_kms *sde_kms)
 	sde_vbif_set_qos_remap(sde_kms, &qos_params);
 }
 
-static void sde_kms_update_pm_qos_irq_request(struct sde_kms *sde_kms)
+void sde_kms_update_pm_qos_irq_request(struct sde_kms *sde_kms,
+			 bool enable, bool skip_lock)
 {
-	struct pm_qos_request *req;
+	struct msm_drm_private *priv;
 
-	req = &sde_kms->pm_qos_irq_req;
-	req->type = PM_QOS_REQ_AFFINE_CORES;
-	req->cpus_affine = sde_kms->irq_cpu_mask;
+	priv = sde_kms->dev->dev_private;
 
-	if (pm_qos_request_active(req))
-		pm_qos_update_request(req, SDE_KMS_PM_QOS_CPU_DMA_LATENCY);
-	else if (!cpumask_empty(&req->cpus_affine)) {
-		/** If request is not active yet and mask is not empty
-		 *  then it needs to be added initially
-		 */
-		pm_qos_add_request(req, PM_QOS_CPU_DMA_LATENCY,
-					SDE_KMS_PM_QOS_CPU_DMA_LATENCY);
-	}
-}
+	if (!skip_lock)
+		mutex_lock(&priv->phandle.phandle_lock);
 
-static void sde_kms_set_default_pm_qos_irq_request(struct sde_kms *sde_kms)
-{
-	if (pm_qos_request_active(&sde_kms->pm_qos_irq_req))
+	if (enable) {
+		struct pm_qos_request *req;
+		u32 cpu_irq_latency;
+
+		req = &sde_kms->pm_qos_irq_req;
+		req->type = PM_QOS_REQ_AFFINE_CORES;
+		req->cpus_affine = sde_kms->irq_cpu_mask;
+		cpu_irq_latency = sde_kms->catalog->perf.cpu_irq_latency;
+
+		if (pm_qos_request_active(req))
+			pm_qos_update_request(req, cpu_irq_latency);
+		else if (!cpumask_empty(&req->cpus_affine)) {
+			/** If request is not active yet and mask is not empty
+			 *  then it needs to be added initially
+			 */
+			pm_qos_add_request(req, PM_QOS_CPU_DMA_LATENCY,
+					cpu_irq_latency);
+		}
+	} else if (!enable && pm_qos_request_active(&sde_kms->pm_qos_irq_req)) {
 		pm_qos_update_request(&sde_kms->pm_qos_irq_req,
-					PM_QOS_DEFAULT_VALUE);
+				PM_QOS_DEFAULT_VALUE);
+	}
+
+	sde_kms->pm_qos_irq_req_en = enable;
+
+	if (!skip_lock)
+		mutex_unlock(&priv->phandle.phandle_lock);
 }
 
 static void sde_kms_irq_affinity_notify(
@@ -3226,8 +3246,8 @@ static void sde_kms_irq_affinity_notify(
 	sde_kms->irq_cpu_mask = *mask;
 
 	// request vote with updated irq cpu mask
-	if (sde_kms->irq_enabled)
-		sde_kms_update_pm_qos_irq_request(sde_kms);
+	if (sde_kms->pm_qos_irq_req_en)
+		sde_kms_update_pm_qos_irq_request(sde_kms, true, true);
 
 	mutex_unlock(&priv->phandle.phandle_lock);
 }
@@ -3252,9 +3272,9 @@ static void sde_kms_handle_power_event(u32 event_type, void *usr)
 		sde_kms_init_shared_hw(sde_kms);
 		_sde_kms_set_lutdma_vbif_remap(sde_kms);
 		sde_kms->first_kickoff = true;
-		sde_kms_update_pm_qos_irq_request(sde_kms);
+		sde_kms_update_pm_qos_irq_request(sde_kms, true, true);
 	} else if (event_type == SDE_POWER_EVENT_PRE_DISABLE) {
-		sde_kms_set_default_pm_qos_irq_request(sde_kms);
+		sde_kms_update_pm_qos_irq_request(sde_kms, false, true);
 		sde_irq_update(msm_kms, false);
 		sde_kms->first_kickoff = false;
 	}

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _SDE_HW_MDSS_H
@@ -408,21 +408,6 @@ enum sde_3d_blend_mode {
 	BLEND_3D_MAX
 };
 
-/**
- * enum sde_layout
- * Describes SSPP to LM staging layout when using more than 1 pair of LMs
- * @SDE_LAYOUT_NONE    : SSPPs to LMs staging layout not enabled
- * @SDE_LAYOUT_LEFT    : SSPPs will be staged on left two LMs
- * @SDE_LAYOUT_RIGHT   : SSPPs will be staged on right two LMs
- * @SDE_LAYOUT_MAX     :
- */
-enum sde_layout {
-	SDE_LAYOUT_NONE = 0,
-	SDE_LAYOUT_LEFT,
-	SDE_LAYOUT_RIGHT,
-	SDE_LAYOUT_MAX,
-};
-
 /** struct sde_format - defines the format configuration which
  * allows SDE HW to correctly fetch and decode the format
  * @base: base msm_format struture containing fourcc code
@@ -590,6 +575,13 @@ struct sde_splash_mem {
 	u32 ramdump_size;
 	unsigned long ramdump_base;
 	u32 ref_cnt;
+};
+
+struct fingerprint_dim_layer {
+	uint32_t flags;
+	uint32_t stage;
+	struct sde_mdss_color color_fill;
+	struct sde_rect rect;
 };
 
 /**

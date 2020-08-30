@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef _DSI_DEFS_H_
@@ -45,7 +45,7 @@
 			(index < MAX_DSI_CTRLS_PER_DISPLAY); index++)
 
 #define DSI_WARN(fmt, ...)	DRM_WARN("[msm-dsi-warn]: "fmt, ##__VA_ARGS__)
-#define DSI_ERR(fmt, ...)	DRM_DEV_ERROR(NULL, "[msm-dsi-error]: " fmt, \
+#define DSI_ERR(fmt, ...)	DRM_DEV_ERROR(NULL, "[DSI]: " fmt, \
 								##__VA_ARGS__)
 #define DSI_INFO(fmt, ...)	DRM_DEV_INFO(NULL, "[msm-dsi-info]: "fmt, \
 								##__VA_ARGS__)
@@ -307,6 +307,88 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_POST_TIMING_SWITCH,
 	DSI_CMD_SET_QSYNC_ON,
 	DSI_CMD_SET_QSYNC_OFF,
+	DSI_CMD_SET_HBM_BRIGHTNESS_ON,
+	DSI_CMD_SET_HBM_BRIGHTNESS_OFF,
+	DSI_CMD_SET_SEED_LP_ON_0,
+	DSI_CMD_SET_SEED_LP_ON_1,
+	DSI_CMD_SET_SEED_LP_ON_2,
+	DSI_CMD_SET_SEED_LP_OFF,
+	DSI_CMD_SET_HBM_ON_1,
+	DSI_CMD_SET_HBM_ON_2,
+	DSI_CMD_SET_HBM_ON_3,
+	DSI_CMD_SET_HBM_ON_4,
+	DSI_CMD_SET_HBM_ON_5,
+	DSI_CMD_SET_HBM_OFF,
+	DSI_CMD_SET_PANEL_SERIAL_NUMBER,
+	DSI_CMD_SET_AOD_ON_1,
+	DSI_CMD_SET_AOD_ON_2,
+	DSI_CMD_SET_AOD_OFF,
+	DSI_CMD_AOD_OFF_HBM_ON_SETTING,
+	DSI_CMD_SET_AOD_OFF_NEW,
+	DSI_CMD_HBM_OFF_AOD_ON_SETTING,
+	DSI_CMD_SET_AOD_OFF_SAMSUNG,
+//	DSI_CMD_SET_SRGB_ON,
+//	DSI_CMD_SET_SRGB_OFF,
+	DSI_CMD_SET_DCI_P3_ON,
+	DSI_CMD_SET_DCI_P3_OFF,
+	DSI_CMD_SET_NIGHT_ON,
+	DSI_CMD_SET_NIGHT_OFF,
+	DSI_CMD_SET_PANEL_ID,
+	DSI_CMD_READ_SAMSUNG_PANEL_REGISTER_ON,
+	DSI_CMD_READ_SAMSUNG_PANEL_REGISTER_ED_ON,
+	DSI_CMD_SET_PANEL_ID1,
+	DSI_CMD_SET_PANEL_ID2,
+	DSI_CMD_SET_PANEL_ID3,
+	DSI_CMD_SET_PANEL_ID4,
+	DSI_CMD_SET_PANEL_ID5,
+	DSI_CMD_SET_PANEL_ID6,
+	DSI_CMD_SET_PANEL_ID7,
+	DSI_CMD_SET_DDIC_CHECK_INFO,
+	DSI_CMD_READ_SAMSUNG_PANEL_REGISTER_OFF,
+	DSI_CMD_SET_ACL_MODE,
+	DSI_CMD_READ_SAMSUNG_PANEL_IC_V_REGISTER_ON,
+	DSI_CMD_SET_PANEL_IC_V,
+	DSI_CMD_READ_SAMSUNG_PANEL_IC_V_REGISTER_OFF,
+	DSI_CMD_SET_LCDINFO_PRE,
+	DSI_CMD_SET_LCDINFO_POST,
+	DSI_CMD_SET_CODE_INFO,
+	DSI_CMD_SET_STAGE_INFO,
+	DSI_CMD_SET_PRODUCTION_INFO,
+	DSI_CMD_SET_ESD_LOGREAD_PREREAD,
+	DSI_CMD_SET_GAMMA_FLASH_PRE_READ_1,
+	DSI_CMD_SET_GAMMA_FLASH_PRE_READ_2,
+	DSI_CMD_SET_GAMMA_FLASH_READ_FB,
+	DSI_CMD_SET_LEVEL2_KEY_ENABLE,
+	DSI_CMD_SET_GAMMA_OTP_READ_C7,
+	DSI_CMD_SET_GAMMA_OTP_READ_C8_SMRPS,
+	DSI_CMD_SET_GAMMA_OTP_READ_C8,
+	DSI_CMD_SET_GAMMA_OTP_READ_C9_SMRPS,
+	DSI_CMD_SET_GAMMA_OTP_READ_C9,
+	DSI_CMD_SET_GAMMA_OTP_READ_B3_SMRPS,
+	DSI_CMD_SET_GAMMA_OTP_READ_B3,
+	DSI_CMD_SET_GAMMA_CHANGE_WRITE,
+	DSI_CMD_SET_LEVEL2_KEY_DISABLE,
+	DSI_CMD_SET_NATIVE_DISPLAY_P3_ON,
+	DSI_CMD_SET_NATIVE_DISPLAY_P3_OFF,
+	DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_ON,
+	DSI_CMD_SET_NATIVE_DISPLAY_WIDE_COLOR_OFF,
+	DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_ON,
+	DSI_CMD_SET_NATIVE_DISPLAY_SRGB_COLOR_OFF,
+	DSI_CMD_SET_113MHZ_OSC_ON,
+	DSI_CMD_POST_ON_BACKLIGHT,
+	DSI_CMD_LOADING_EFFECT_ON,
+	DSI_CMD_LOADING_EFFECT_OFF,
+	DSI_CMD_LOADING_CUSTOMER_RGB_ON,
+	DSI_CMD_LOADING_CUSTOMER_RGB_OFF,
+	DSI_CMD_LOADING_CUSTOMER_P3_ON,
+	DSI_CMD_LOADING_CUSTOMER_P3_OFF,
+	DSI_CMD_SET_MCA_SETTING_MODE_1,
+	DSI_CMD_SET_MCA_SETTING_MODE_0,
+	DSI_CMD_SET_PANEL_COMMAND,
+	DSI_CMD_SET_SEED_COMMAND,
+#if defined(CONFIG_PXLW_IRIS5)
+	DSI_CMD_SET_ABYP,
+#endif
 	DSI_CMD_SET_MAX
 };
 
@@ -479,11 +561,14 @@ struct dsi_split_link_config {
  * @t_clk_pre:           Number of byte clock cycles that the high spped clock
  *                       shall be driven prior to data lane transitions from LP
  *                       to HS mode.
+ * @t_clk_pre_extend:    Increment t_clk_pre counter by 2 byteclk if set to
+ *                       true, otherwise increment by 1 byteclk.
  * @ignore_rx_eot:       Ignore Rx EOT packets if set to true.
  * @append_tx_eot:       Append EOT packets for forward transmissions if set to
  *                       true.
  * @ext_bridge_mode:     External bridge is connected.
  * @force_hs_clk_lane:   Send continuous clock to the panel.
+ * @phy_type:            DPHY/CPHY is enabled for this panel.
  * @dsi_split_link_config:  Split Link Configuration.
  * @byte_intf_clk_div:   Determines the factor for calculating byte intf clock.
  */
@@ -504,10 +589,12 @@ struct dsi_host_common_cfg {
 	bool bit_swap_blue;
 	u32 t_clk_post;
 	u32 t_clk_pre;
+	bool t_clk_pre_extend;
 	bool ignore_rx_eot;
 	bool append_tx_eot;
 	bool ext_bridge_mode;
 	bool force_hs_clk_lane;
+	enum dsi_phy_type phy_type;
 	struct dsi_split_link_config split_link;
 	u32 byte_intf_clk_div;
 };
@@ -537,7 +624,6 @@ struct dsi_video_engine_cfg {
 	bool hsa_lp11_en;
 	bool eof_bllp_lp11_en;
 	bool bllp_lp11_en;
-	bool force_clk_lane_hs;
 	enum dsi_video_traffic_mode traffic_mode;
 	u32 vc_id;
 	u32 dma_sched_line;
@@ -566,7 +652,7 @@ struct dsi_cmd_engine_cfg {
  * @common_config:         Host configuration common to both Video and Cmd mode.
  * @video_engine:          Video engine configuration if panel is in video mode.
  * @cmd_engine:            Cmd engine configuration if panel is in cmd mode.
- * @esc_clk_rate_khz:      Esc clock frequency in Hz.
+ * @esc_clk_rate_hz:      Esc clock frequency in Hz.
  * @bit_clk_rate_hz:       Bit clock frequency in Hz.
  * @bit_clk_rate_hz_override: DSI bit clk rate override from dt/sysfs.
  * @video_timing:          Video timing information of a frame.
